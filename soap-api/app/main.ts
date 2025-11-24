@@ -48,8 +48,7 @@ const service = {
   }
 };
 
-const wsdl = `
-<?xml version="1.0" encoding="UTF-8"?>
+const wsdl = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions
     name="FileService"
     targetNamespace="http://example.com/files"
@@ -91,8 +90,7 @@ const wsdl = `
     </port>
   </service>
 
-</definitions>
-`;
+</definitions>`;
 
 const server: http.Server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
   res.end("SOAP server running");

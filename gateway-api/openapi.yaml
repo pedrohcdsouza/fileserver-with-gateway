@@ -1,0 +1,391 @@
+openapi: 3.0.3
+info:
+  title: File Server Gateway API
+  description: |
+    API Gateway que integra REST e SOAP APIs para gerenciamento de arquivos.
+    
+    Esta API implementa **HATEOAS** (Hypermedia as the Engine of Application State), 
+    permitindo navegação dinâmica através dos recursos.
+    
+    ## Arquitetura
+    - **Gateway (Go/Fiber)**: Orquestra requisições
+    - **REST API (Python/FastAPI)**: Gerencia arquivos
+    - **SOAP API (Node.js)**: Fornece metadados
+    
+  version: 1.0.0
+  contact:
+    name: API Support
+    url: https://github.com/pedrohcdsouza/fileserver-with-gateway
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor local
+  - url: http://localhost:9000
+    description: Servidor Docker (interno)
+
+tags:
+  - name: Root
+    description: Informações da API
+  - name: Files
+    description: Operações com arquivos
+
+paths:
+  /:
+    get:
+      tags:
+        - Root
+      summary: Raiz da API
+      description: Retorna informações da API e links HATEOAS de navegação
+      operationId: getRoot
+      responses:
+        '200':
+          description: Sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File Server Gateway API"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  _links:
+                    $ref: '#/components/schemas/RootLinks'
+
+  /files:
+    get:
+      tags:
+        - Files
+      summary: Listar todos os arquivos
+      description: Retorna lista de arquivos com links HATEOAS para cada recurso
+      operationId: listFiles
+      responses:
+        '200':
+          description: Lista de arquivos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - Files
+      summary: Upload de arquivo
+      description: Faz upload de um novo arquivo
+      operationId: uploadFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo a ser enviado
+              required:
+                - file
+      responses:
+        '201':
+          description: Arquivo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '400':
+          description: Requisição inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/{id}:
+    get:
+      tags:
+        - Files
+      summary: Obter informações do arquivo
+      description: Retorna informações e links HATEOAS de um arquivo específico
+      operationId: getFile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do arquivo
+          schema:
+            type: string
+            example: "abc123"
+      responses:
+        '200':
+          description: Informações do arquivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '404':
+          description: Arquivo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Files
+      summary: Deletar arquivo
+      description: Remove um arquivo do sistema
+      operationId: deleteFile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do arquivo
+          schema:
+            type: string
+            example: "abc123"
+      responses:
+        '200':
+          description: Arquivo deletado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          description: Arquivo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/{id}/download:
+    get:
+      tags:
+        - Files
+      summary: Download de arquivo
+      description: Faz download do arquivo binário
+      operationId: downloadFile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do arquivo
+          schema:
+            type: string
+            example: "abc123"
+      responses:
+        '200':
+          description: Arquivo binário
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Arquivo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/{id}/metadata:
+    get:
+      tags:
+        - Files
+      summary: Obter metadados (SOAP)
+      description: Retorna metadados do arquivo consumindo a API SOAP
+      operationId: getFileMetadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do arquivo
+          schema:
+            type: string
+            example: "1"
+      responses:
+        '200':
+          description: Metadados do arquivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Link:
+      type: object
+      properties:
+        href:
+          type: string
+          description: URL do recurso
+          example: "http://localhost:3000/files/abc123"
+        method:
+          type: string
+          description: Método HTTP
+          enum: [GET, POST, PUT, DELETE, PATCH]
+          example: "GET"
+        rel:
+          type: string
+          description: Relação semântica
+          example: "self"
+    
+    RootLinks:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        files:
+          $ref: '#/components/schemas/Link'
+        upload:
+          $ref: '#/components/schemas/Link'
+    
+    FileLinks:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        download:
+          $ref: '#/components/schemas/Link'
+        metadata:
+          $ref: '#/components/schemas/Link'
+        delete:
+          $ref: '#/components/schemas/Link'
+    
+    FileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID único do arquivo
+          example: "abc123"
+        filename:
+          type: string
+          description: Nome do arquivo
+          example: "documento.pdf"
+        _links:
+          $ref: '#/components/schemas/FileLinks'
+    
+    FileListResponse:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileResponse'
+        _links:
+          type: object
+          properties:
+            self:
+              $ref: '#/components/schemas/Link'
+            upload:
+              $ref: '#/components/schemas/Link'
+    
+    FileUploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "abc123"
+        filename:
+          type: string
+          example: "documento.pdf"
+        message:
+          type: string
+          example: "File uploaded successfully"
+        _links:
+          $ref: '#/components/schemas/FileLinks'
+    
+    MetadataResponse:
+      type: object
+      properties:
+        metadata:
+          type: object
+          properties:
+            id:
+              type: string
+              example: "1"
+            found:
+              type: boolean
+              example: true
+            name:
+              type: string
+              example: "documento.pdf"
+            size:
+              type: integer
+              example: 204800
+            type:
+              type: string
+              example: "application/pdf"
+            _links:
+              type: object
+              properties:
+                self:
+                  $ref: '#/components/schemas/Link'
+                file:
+                  $ref: '#/components/schemas/Link'
+                download:
+                  $ref: '#/components/schemas/Link'
+        soap_raw_xml:
+          type: string
+          description: XML SOAP original
+          example: '<?xml version="1.0"?><soap:Envelope>...</soap:Envelope>'
+    
+    DeleteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "File deleted successfully"
+        id:
+          type: string
+          example: "abc123"
+        _links:
+          type: object
+          properties:
+            files:
+              $ref: '#/components/schemas/Link'
+    
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "File not found"
+        _links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'

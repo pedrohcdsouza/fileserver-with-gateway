@@ -84,6 +84,143 @@ func main() {
 	client := resty.New()
 
 	// ---------------------------
+	// GET /docs - Swagger UI
+	// ---------------------------
+	app.Get("/docs", func(c *fiber.Ctx) error {
+		return c.Type("html").SendString(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gateway API - Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <style>
+        body { margin: 0; padding: 0; }
+        .topbar { display: none; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function() {
+            const spec = ` + "`" + `
+openapi: 3.0.3
+info:
+  title: File Server Gateway API
+  description: API Gateway que integra REST e SOAP APIs com HATEOAS
+  version: 1.0.0
+servers:
+  - url: ` + baseURL + `
+    description: Gateway Server
+paths:
+  /:
+    get:
+      tags: [Root]
+      summary: Raiz da API
+      responses:
+        '200':
+          description: Informações da API
+  /files:
+    get:
+      tags: [Files]
+      summary: Listar arquivos
+      responses:
+        '200':
+          description: Lista de arquivos com HATEOAS
+    post:
+      tags: [Files]
+      summary: Upload de arquivo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Arquivo enviado
+  /files/{id}:
+    get:
+      tags: [Files]
+      summary: Informações do arquivo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dados do arquivo
+    delete:
+      tags: [Files]
+      summary: Deletar arquivo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Arquivo deletado
+  /files/{id}/download:
+    get:
+      tags: [Files]
+      summary: Download de arquivo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Arquivo binário
+  /files/{id}/metadata:
+    get:
+      tags: [Files]
+      summary: Metadados via SOAP
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metadados do arquivo
+` + "`" + `;
+            const ui = SwaggerUIBundle({
+                spec: jsyaml.load(spec),
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout"
+            });
+            window.ui = ui;
+        };
+    </script>
+    <script src="https://unpkg.com/js-yaml@4/dist/js-yaml.min.js"></script>
+</body>
+</html>
+		`)
+	})
+
+	// ---------------------------
 	// GET / - API Root com HATEOAS
 	// ---------------------------
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -105,6 +242,11 @@ func main() {
 					Href:   baseURL + "/files",
 					Method: "POST",
 					Rel:    "create",
+				},
+				"docs": {
+					Href:   baseURL + "/docs",
+					Method: "GET",
+					Rel:    "documentation",
 				},
 			},
 		})
