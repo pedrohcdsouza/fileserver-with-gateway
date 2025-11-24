@@ -79,7 +79,14 @@ func createFileLinks(id string) map[string]Link {
 
 func main() {
 	app := fiber.New()
-	app.Use(cors.New())
+	
+	// Configurar CORS para permitir requisições do frontend
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:5173, http://localhost:80, http://localhost",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowCredentials: true,
+	}))
 	
 	client := resty.New()
 
@@ -304,18 +311,35 @@ paths:
 			return c.Status(400).JSON(fiber.Map{"error": "No file uploaded"})
 		}
 
+		// Abrir o arquivo
+		src, err := file.Open()
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to open file"})
+		}
+		defer src.Close()
+
+		// Enviar para REST API
 		resp, err := client.R().
-			SetFileReader("file", file.Filename, c.Request().BodyStream()).
+			SetFileReader("file", file.Filename, src).
 			Post(restURL + "/files")
 
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 
+		if resp.StatusCode() != 200 {
+			return c.Status(resp.StatusCode()).JSON(fiber.Map{"error": "Failed to upload to REST API"})
+		}
+
 		var result map[string]interface{}
-		json.Unmarshal(resp.Body(), &result)
+		if err := json.Unmarshal(resp.Body(), &result); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to parse response"})
+		}
 		
-		id := result["id"].(string)
+		id, ok := result["id"].(string)
+		if !ok {
+			return c.Status(500).JSON(fiber.Map{"error": "Invalid response from REST API"})
+		}
 
 		return c.Status(201).JSON(fiber.Map{
 			"id":       id,

@@ -5,23 +5,33 @@ Sistema de gerenciamento de arquivos com arquitetura de microserviços integrand
 ## 🏗️ Arquitetura
 
 ```
-┌─────────────────────────────────┐
-│     Gateway API (Go/Fiber)      │  ← HATEOAS implementado
-│         Porta: 3000             │
-└────────────┬────────────────────┘
-             │
-      ┌──────┴──────┐
-      │             │
-┌─────▼─────┐ ┌────▼──────┐
-│ REST API  │ │ SOAP API  │
-│ (Python)  │ │ (Node.js) │
-│ Porta 8000│ │ Porta 8001│
-└───────────┘ └───────────┘
-   FastAPI      TypeScript
-  Arquivos      Metadados
+        ┌─────────────────────────┐
+        │   Web Client (React)    │  ← Interface do usuário
+        │      Porta: 5173        │
+        └────────────┬────────────┘
+                     │
+        ┌────────────▼────────────┐
+        │  Gateway API (Go/Fiber) │  ← HATEOAS implementado
+        │      Porta: 3000        │
+        └────────────┬────────────┘
+                     │
+              ┌──────┴──────┐
+              │             │
+        ┌─────▼─────┐ ┌────▼──────┐
+        │ REST API  │ │ SOAP API  │
+        │ (Python)  │ │ (Node.js) │
+        │ Porta 8000│ │ Porta 8001│
+        └───────────┘ └───────────┘
+           FastAPI      TypeScript
+          Arquivos      Metadados
 ```
 
 ### Componentes
+
+- **Web Client (React/Vite)** - Porta 5173
+  - Interface web para CRUD de arquivos
+  - Design moderno e responsivo
+  - Documentação: [web-client/README.md](web-client/README.md)
 
 - **Gateway API (Go/Fiber)** - Porta 3000
   - Orquestra requisições entre REST e SOAP
@@ -49,6 +59,8 @@ docker-compose up --build
 
 ### Acessar as APIs
 
+- **Web Client**: http://localhost:5173
+  - Interface web completa para gerenciar arquivos
 - **Gateway**: http://localhost:3000
   - **Swagger UI**: http://localhost:3000/docs
   - Swagger local: [gateway-api/docs/swagger.html](gateway-api/docs/swagger.html)
@@ -105,14 +117,18 @@ DELETE http://localhost:3000/files/{id}
 
 ## 📚 Documentação
 
-Cada API possui documentação detalhada:
+Cada componente possui documentação detalhada:
 
-1. **Gateway API**
+1. **Web Client**
+   - [README.md](web-client/README.md) - Documentação do cliente React
+   - http://localhost:5173 - Interface web
+
+2. **Gateway API**
    - [README.md](gateway-api/README.md) - Documentação completa
    - [openapi.yaml](gateway-api/openapi.yaml) - Especificação OpenAPI 3.0
    - [swagger.html](gateway-api/docs/swagger.html) - Interface Swagger UI
 
-2. **REST API**
+3. **REST API**
    - [README.md](rest-api/README.md) - Documentação completa
    - http://localhost:8000/docs - Swagger UI automático (FastAPI)
    - http://localhost:8000/redoc - ReDoc automático (FastAPI)
@@ -196,6 +212,13 @@ curl -X DELETE http://localhost:3000/files/{id}
 
 ## 🛠️ Executar localmente (sem Docker)
 
+### Web Client (React)
+```bash
+cd web-client
+npm install
+npm run dev
+```
+
 ### REST API (Python)
 ```bash
 cd rest-api
@@ -220,6 +243,7 @@ go run app/main.go
 
 | Componente | Linguagem | Framework | Porta |
 |------------|-----------|-----------|-------|
+| Web Client | JavaScript | React 18 + Vite | 5173 |
 | Gateway | Go 1.21 | Fiber | 3000 |
 | REST API | Python 3.11+ | FastAPI | 8000 |
 | SOAP API | TypeScript/Node.js 18+ | soap | 8001 |
@@ -240,6 +264,16 @@ go run app/main.go
 fileserver-with-gateway/
 ├── docker-compose.yml
 ├── README.md
+├── web-client/               # Cliente Web React
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       └── index.css
 ├── gateway-api/
 │   ├── Dockerfile
 │   ├── README.md

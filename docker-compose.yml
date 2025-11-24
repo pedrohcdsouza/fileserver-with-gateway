@@ -42,6 +42,19 @@ services:
       - REST_URL=http://rest-api:8000
       - SOAP_URL=http://soap-api:8001/soap
 
+  web-client:
+    build:
+      context: ./web-client
+      dockerfile: Dockerfile
+    container_name: fileserver-web-client
+    ports:
+      - "5173:80"
+    depends_on:
+      - gateway-api
+    networks:
+      - fileserver-network
+    restart: unless-stopped
+
 volumes:
   files-data:
     driver: local
