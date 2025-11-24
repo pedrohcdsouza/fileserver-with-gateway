@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  rest-api:
+    build:
+      context: ./rest-api
+      dockerfile: Dockerfile
+    container_name: fileserver-rest-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - files-data:/data/files
+    networks:
+      - fileserver-network
+    restart: unless-stopped
+
+  soap-api:
+    build:
+      context: ./soap-api
+      dockerfile: Dockerfile
+    container_name: fileserver-soap-api
+    ports:
+      - "8001:8001"
+    networks:
+      - fileserver-network
+    restart: unless-stopped
+
+  gateway-api:
+    build:
+      context: ./gateway-api
+      dockerfile: Dockerfile
+    container_name: fileserver-gateway
+    ports:
+      - "3000:9000"
+    depends_on:
+      - rest-api
+      - soap-api
+    networks:
+      - fileserver-network
+    restart: unless-stopped
+    environment:
+      - REST_URL=http://rest-api:8000
+      - SOAP_URL=http://soap-api:8001/soap
+
+volumes:
+  files-data:
+    driver: local
+
+networks:
+  fileserver-network:
+    driver: bridge

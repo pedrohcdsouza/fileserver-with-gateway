@@ -3,13 +3,21 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/go-resty/resty/v2"
 )
 
-var restURL = "http://localhost:8000"      // sua API REST em Python
-var soapURL = "http://localhost:8001/soap" // seu servidor SOAP node
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+var restURL = getEnv("REST_URL", "http://localhost:8000")      // sua API REST em Python
+var soapURL = getEnv("SOAP_URL", "http://localhost:8001/soap") // seu servidor SOAP node
 
 func main() {
 
