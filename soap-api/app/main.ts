@@ -1,27 +1,17 @@
 import * as soap from 'soap';
 import * as http from 'http';
+import { getFileMetadata, testConnection, FileMetadata } from './database';
 
-// fake database
-interface FileMetadata {
-  name: string;
-  size: number;
-  type: string;
-}
-
-interface FakeDb {
-  [key: number]: FileMetadata;
-}
-
-const fakeDb: FakeDb = {
-  1: { name: "documento.pdf", size: 204800, type: "application/pdf" },
-  2: { name: "foto.png", size: 512000, type: "image/png" },
-  3: { name: "musica.mp3", size: 3400000, type: "audio/mpeg" }
-};
-
+/**
+ * Interface para argumentos da requisição SOAP
+ */
 interface GetFileMetadataArgs {
   id: string | number;
 }
 
+/**
+ * Interface para resposta SOAP
+ */
 interface GetFileMetadataResponse {
   found: boolean;
   name: string;
@@ -29,25 +19,43 @@ interface GetFileMetadataResponse {
   type: string;
 }
 
+/**
+ * Serviço SOAP que retorna metadados de arquivos do banco de dados PostgreSQL
+ */
 const service = {
   FileService: {
     FilePort: {
-      GetFileMetadata(args: GetFileMetadataArgs): GetFileMetadataResponse {
-        console.log("Chamou SOAP com:", args);
+      async GetFileMetadata(args: GetFileMetadataArgs): Promise<GetFileMetadataResponse> {
+        console.log('Requisição SOAP recebida para ID:', args.id);
 
-        const id = parseInt(args.id.toString());
-        const data = fakeDb[id];
+        try {
+          const id = args.id.toString();
+          const metadata: FileMetadata | null = await getFileMetadata(id);
 
-        if (!data) {
-          return { found: false, name: "", size: 0, type: "" };
+          if (!metadata) {
+            console.log('Arquivo não encontrado:', id);
+            return { found: false, name: '', size: 0, type: '' };
+          }
+
+          console.log('Metadados encontrados:', metadata.filename);
+          return {
+            found: true,
+            name: metadata.filename,
+            size: metadata.size,
+            type: metadata.mimetype || 'application/octet-stream'
+          };
+        } catch (error) {
+          console.error('Erro ao buscar metadados:', error);
+          return { found: false, name: '', size: 0, type: '' };
         }
-
-        return { found: true, ...data };
       }
     }
   }
 };
 
+/**
+ * Definição WSDL do serviço SOAP
+ */
 const wsdl = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions
     name="FileService"
@@ -58,7 +66,7 @@ const wsdl = `<?xml version="1.0" encoding="UTF-8"?>
     xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 
   <message name="GetFileMetadataRequest">
-    <part name="id" type="xsd:int"/>
+    <part name="id" type="xsd:string"/>
   </message>
 
   <message name="GetFileMetadataResponse">
@@ -92,13 +100,51 @@ const wsdl = `<?xml version="1.0" encoding="UTF-8"?>
 
 </definitions>`;
 
+/**
+ * Inicialização do servidor HTTP e SOAP
+ */
 const server: http.Server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
   res.end("SOAP server running");
 });
 
-server.listen(8001, () => {
-  console.log("SOAP server at http://localhost:8001/soap");
-  soap.listen(server, "/soap", service, wsdl);
+/**
+ * Inicia o servidor
+ */
+async function startServer() {
+  try {
+    // Testar conexão com o banco de dados
+    await testConnection();
+    
+    // Iniciar servidor HTTP
+    server.listen(8001, () => {
+      console.log('SOAP server listening at http://localhost:8001/soap');
+      console.log('WSDL available at http://localhost:8001/soap?wsdl');
+      
+      // Configurar serviço SOAP
+      soap.listen(server, '/soap', service, wsdl);
+    });
+  } catch (error) {
+    console.error('Erro ao iniciar servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Iniciar o servidor
+startServer();
+
+// Tratamento de encerramento gracioso
+process.on('SIGTERM', () => {
+  console.log('SIGTERM recebido, encerrando servidor...');
+  server.close(() => {
+    console.log('Servidor encerrado');
+    process.exit(0);
+  });
 });
 
-
+process.on('SIGINT', () => {
+  console.log('SIGINT recebido, encerrando servidor...');
+  server.close(() => {
+    console.log('Servidor encerrado');
+    process.exit(0);
+  });
+});

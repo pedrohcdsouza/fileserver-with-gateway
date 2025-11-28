@@ -12,14 +12,17 @@ Sistema de gerenciamento de arquivos com arquitetura de microserviços integrand
 ```
 Web Client (React) → Gateway API (Go) → REST API (Python) + SOAP API (Node.js)
    Porta 5173          Porta 3000        Porta 8000          Porta 8001
+                                              ↓                    ↓
+                                         PostgreSQL (Porta 5432)
 ```
 
 ### Componentes
 
+- **PostgreSQL** - Banco de dados para armazenamento de metadados dos arquivos
 - **Web Client** - Interface web para gerenciamento de arquivos
 - **Gateway API** - Orquestra requisições e implementa HATEOAS
-- **REST API** - CRUD de arquivos (upload, download, delete)
-- **SOAP API** - Fornece metadados dos arquivos via WSDL
+- **REST API** - CRUD de arquivos (upload, download, delete) + persistência no banco
+- **SOAP API** - Fornece metadados dos arquivos via WSDL consultando o banco
 
 ## 🚀 Como executar
 
@@ -95,6 +98,42 @@ curl http://localhost:3000/files/{id}/metadata
 curl -X DELETE http://localhost:3000/files/{id}
 ```
 
+## 💾 Banco de Dados
+
+O sistema utiliza **PostgreSQL** para armazenar metadados dos arquivos:
+
+- **Tabela `files`**: Armazena ID, nome do arquivo, caminho no filesystem, tamanho, tipo MIME e data de upload
+- **Arquivos físicos**: Armazenados no volume Docker `files-data` em `/data/files`
+- **Compartilhamento**: REST API e SOAP API compartilham a mesma tabela de metadados
+
+### Acessar banco de dados
+
+```bash
+# Via docker-compose
+docker-compose exec postgres psql -U fileserver -d fileserver_db
+
+# Listar arquivos
+SELECT id, filename, size, mimetype FROM files;
+```
+
+## 🔧 Variáveis de Ambiente
+
+### REST API e SOAP API
+
+```bash
+DATABASE_URL=postgresql://fileserver:fileserver123@postgres:5432/fileserver_db
+```
+
+### Gateway API
+
+```bash
+REST_URL=http://rest-api:8000
+SOAP_URL=http://soap-api:8001/soap
+BASE_URL=http://localhost:3000
+```
+
+Estas variáveis já estão configuradas no `docker-compose.yml`.
+
 ## 📊 Tecnologias
 
 | Componente | Tecnologia | Porta |
@@ -103,6 +142,7 @@ curl -X DELETE http://localhost:3000/files/{id}
 | Gateway | Go + Fiber | 3000 |
 | REST API | Python + FastAPI | 8000 |
 | SOAP API | Node.js + TypeScript | 8001 |
+| Database | PostgreSQL 15 | 5432 |
 
 ## 📁 Estrutura
 
@@ -126,7 +166,11 @@ Cada componente possui README próprio:
 ## 🧹 Limpar
 
 ```bash
+# Parar containers e remover volumes (incluindo banco de dados)
 docker-compose down -v
+
+# Apenas parar containers (mantém dados)
+docker-compose down
 ```
 
 ## 📝 Licença

@@ -1,0 +1,4 @@
+Este é um arquivo de teste para validar o sistema de upload.
+O sistema integra REST API, SOAP API e Gateway com PostgreSQL.
+
+Teste realizado em: 2025-11-27

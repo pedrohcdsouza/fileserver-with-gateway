@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"log"
 	"os"
@@ -424,17 +425,49 @@ paths:
 			Post(soapURL)
 
 		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+			log.Printf("Erro ao chamar SOAP API: %v", err)
+			return c.Status(500).JSON(fiber.Map{"error": "Erro ao conectar com SOAP API"})
 		}
 
-		// Aqui você pode parsear o XML se quiser
-		// Por simplicidade, vou retornar um mock
+		// Parse da resposta SOAP XML
+		type SOAPEnvelope struct {
+			XMLName xml.Name `xml:"Envelope"`
+			Body    struct {
+				GetFileMetadataResponse struct {
+					Found bool   `xml:"found"`
+					Name  string `xml:"name"`
+					Size  int    `xml:"size"`
+					Type  string `xml:"type"`
+				} `xml:"GetFileMetadataResponse"`
+			} `xml:"Body"`
+		}
+
+		var envelope SOAPEnvelope
+		if err := xml.Unmarshal(resp.Body(), &envelope); err != nil {
+			log.Printf("Erro ao parsear resposta SOAP: %v\nResposta: %s", err, resp.String())
+			return c.Status(500).JSON(fiber.Map{"error": "Erro ao processar resposta SOAP"})
+		}
+
+		// Verificar se arquivo foi encontrado
+		if !envelope.Body.GetFileMetadataResponse.Found {
+			return c.Status(404).JSON(fiber.Map{
+				"error": "Arquivo não encontrado",
+				"_links": map[string]Link{
+					"files": {
+						Href:   baseURL + "/files",
+						Method: "GET",
+						Rel:    "collection",
+					},
+				},
+			})
+		}
+
 		metadata := MetadataResponse{
 			ID:    id,
-			Found: true,
-			Name:  "documento.pdf",
-			Size:  204800,
-			Type:  "application/pdf",
+			Found: envelope.Body.GetFileMetadataResponse.Found,
+			Name:  envelope.Body.GetFileMetadataResponse.Name,
+			Size:  envelope.Body.GetFileMetadataResponse.Size,
+			Type:  envelope.Body.GetFileMetadataResponse.Type,
 			Links: map[string]Link{
 				"self": {
 					Href:   baseURL + "/files/" + id + "/metadata",
@@ -454,10 +487,7 @@ paths:
 			},
 		}
 
-		return c.JSON(fiber.Map{
-			"metadata":    metadata,
-			"soap_raw_xml": resp.String(),
-		})
+		return c.JSON(metadata)
 	})
 
 	// ---------------------------

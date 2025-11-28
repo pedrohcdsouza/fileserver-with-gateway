@@ -12,7 +12,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "soap": "^1.6.0"
+    "soap": "^1.6.0",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
