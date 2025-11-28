@@ -7,9 +7,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/go-resty/resty/v2"
 )
 
 func getEnv(key, fallback string) string {
@@ -83,10 +83,9 @@ func main() {
 	
 	// Configurar CORS para permitir requisições do frontend
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:5173, http://localhost:80, http://localhost",
-		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-		AllowCredentials: true,
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
 	
 	client := resty.New()
@@ -518,6 +517,6 @@ paths:
 		})
 	})
 
-	log.Println("Gateway rodando em http://localhost:9000")
-	app.Listen(":9000")
+	log.Println("Gateway rodando em http://0.0.0.0:9000")
+	app.Listen("0.0.0.0:9000")
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
-const API_URL = 'http://localhost:3000'
+// Use nginx proxy to avoid CORS issues
+const API_URL = '/api'
 
 function App() {
   const [files, setFiles] = useState([])
