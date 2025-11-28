@@ -6,6 +6,8 @@ Sistema de gerenciamento de arquivos com arquitetura de microserviços integrand
 
 - **Pedro Henrique Cardoso de Souza** - [pedrohcdsouza](https://github.com/pedrohcdsouza)
 
+## IP do Cliente: http://10.24.20.217:5173/
+
 ## 🏗️ Arquitetura
 
 ```
