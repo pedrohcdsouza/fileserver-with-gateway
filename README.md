@@ -5,7 +5,6 @@ Sistema de gerenciamento de arquivos com arquitetura de microserviços integrand
 ## 👥 Autores
 
 - **Pedro Henrique Cardoso de Souza** - [pedrohcdsouza](https://github.com/pedrohcdsouza)
-- **Victor Matheus** - [V-Matheus](https://github.com/V-Matheus)
 
 ## 🏗️ Arquitetura
 
